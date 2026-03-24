@@ -24,6 +24,12 @@ const MODEL_OPTIONS = [
     description: "Volcengine Ark",
     icon: <BrainIcon />,
   },
+  {
+    id: "doubao-seed-2-0-lite-260215",
+    name: "Doubao Seed 2.0 Lite",
+    description: "Volcengine Ark",
+    icon: <BrainIcon />,
+  },
 ];
 
 function getThreadIdFromUrl(): string | undefined {
@@ -38,7 +44,7 @@ type AssistantProps = {
 
 export const Assistant = ({ initialThreadId }: AssistantProps) => {
   const [activeThreadId, setActiveThreadId] = useState<string | undefined>(
-    initialThreadId,
+    initialThreadId
   );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -56,7 +62,7 @@ export const Assistant = ({ initialThreadId }: AssistantProps) => {
   useEffect(() => {
     window.localStorage.setItem(
       "gpt-chat-sidebar",
-      sidebarCollapsed ? "collapsed" : "expanded",
+      sidebarCollapsed ? "collapsed" : "expanded"
     );
   }, [sidebarCollapsed]);
 
@@ -126,8 +132,8 @@ export const Assistant = ({ initialThreadId }: AssistantProps) => {
             (part) =>
               (part.type === "text" && part.text.trim().length > 0) ||
               part.type === "reasoning" ||
-              part.type === "tool-call",
-          ),
+              part.type === "tool-call"
+          )
       );
 
       const resolvedThreadId = activeThreadId ?? creatingThreadIdRef.current;
@@ -168,7 +174,7 @@ export const Assistant = ({ initialThreadId }: AssistantProps) => {
       setActiveThreadId(nextThreadId);
       window.history.pushState(null, "", `/chat/${nextThreadId}`);
     },
-    [effectiveThreadId],
+    [effectiveThreadId]
   );
 
   const handleNewThread = useCallback(() => {
@@ -194,7 +200,7 @@ export const Assistant = ({ initialThreadId }: AssistantProps) => {
         window.history.replaceState(null, "", "/chat");
       }
     },
-    [effectiveThreadId, refreshThreads, setMessages],
+    [effectiveThreadId, refreshThreads, setMessages]
   );
 
   return (
