@@ -32,13 +32,13 @@ export const ThreadList: FC = () => {
 
 const ThreadListNew: FC = () => {
   return (
-    <ThreadListPrimitive.New asChild>
+    <ThreadListPrimitive.New asChild className="mb-1">
       <Button
         variant="outline"
         className="aui-thread-list-new h-9 justify-start gap-2 rounded-lg px-3 text-sm hover:bg-muted data-active:bg-muted"
       >
         <PlusIcon className="size-4" />
-        New Thread
+        新会话
       </Button>
     </ThreadListPrimitive.New>
   );
@@ -66,7 +66,7 @@ const ThreadListItem: FC = () => {
     <ThreadListItemPrimitive.Root className="aui-thread-list-item group flex h-9 items-center gap-2 rounded-lg transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none data-active:bg-muted">
       <ThreadListItemPrimitive.Trigger className="aui-thread-list-item-trigger flex h-full min-w-0 flex-1 items-center px-3 text-start text-sm">
         <span className="aui-thread-list-item-title min-w-0 flex-1 truncate">
-          <ThreadListItemPrimitive.Title fallback="New Chat" />
+          <ThreadListItemPrimitive.Title fallback="新聊天" />
         </span>
       </ThreadListItemPrimitive.Trigger>
       <ThreadListItemMore />

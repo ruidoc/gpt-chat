@@ -31,17 +31,19 @@ export async function POST(req: Request) {
     messages,
     system,
     tools,
-    modelName,
+    config,
   }: {
     messages: UIMessage[];
     system?: string;
     tools?: Record<string, { description?: string; parameters: JSONSchema7 }>;
-    modelName?: string;
+    config?: {
+      modelName?: string;
+    };
   } = await req.json();
 
   const resolvedModelName =
-    typeof modelName === "string" && modelName.trim().length > 0
-      ? modelName
+    typeof config?.modelName === "string" && config.modelName.trim().length > 0
+      ? config.modelName
       : defaultVolcengineChatModel;
 
   const result = streamText({
