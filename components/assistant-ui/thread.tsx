@@ -35,7 +35,11 @@ import {
 } from "lucide-react";
 import type { FC } from "react";
 
-export const Thread: FC = () => {
+type ThreadProps = {
+  hydrating?: boolean;
+};
+
+export const Thread: FC<ThreadProps> = ({ hydrating }) => {
   return (
     <ThreadPrimitive.Root
       className="aui-root aui-thread-root @container flex h-full flex-col bg-background"
@@ -49,19 +53,23 @@ export const Thread: FC = () => {
         turnAnchor="top"
         className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth px-4 pt-4"
       >
-        <AuiIf condition={(s) => s.thread.isEmpty}>
-          <ThreadWelcome />
-        </AuiIf>
+        {!hydrating ? (
+          <AuiIf condition={(s) => s.thread.isEmpty}>
+            <ThreadWelcome />
+          </AuiIf>
+        ) : null}
 
         <ThreadPrimitive.Messages>
           {() => <ThreadMessage />}
         </ThreadPrimitive.Messages>
-
-        <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer sticky bottom-0 mx-auto mt-auto flex w-full max-w-(--thread-max-width) flex-col gap-4 overflow-visible rounded-t-(--composer-radius) bg-background pb-4 md:pb-6">
-          <ThreadScrollToBottom />
-          <Composer />
-        </ThreadPrimitive.ViewportFooter>
+        <ThreadScrollToBottom />
       </ThreadPrimitive.Viewport>
+
+      <div className="shrink-0 bg-background px-4 pb-4 md:pb-6">
+        <div className="mx-auto w-full max-w-(--thread-max-width)">
+          <Composer />
+        </div>
+      </div>
     </ThreadPrimitive.Root>
   );
 };
@@ -80,7 +88,7 @@ const ThreadScrollToBottom: FC = () => {
       <TooltipIconButton
         tooltip="Scroll to bottom"
         variant="outline"
-        className="aui-thread-scroll-to-bottom absolute -top-12 z-10 self-center rounded-full p-4 disabled:invisible dark:border-border dark:bg-background dark:hover:bg-accent"
+        className="aui-thread-scroll-to-bottom absolute right-1/2 bottom-4 z-10 translate-x-1/2 rounded-full p-4 disabled:invisible dark:border-border dark:bg-background dark:hover:bg-accent"
       >
         <ArrowDownIcon />
       </TooltipIconButton>
@@ -143,7 +151,7 @@ const Composer: FC = () => {
           <ComposerAttachments />
           <ComposerPrimitive.Input
             placeholder="Send a message..."
-            className="aui-composer-input max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-sm outline-none placeholder:text-muted-foreground/80"
+            className="aui-composer-input max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-base outline-none placeholder:text-muted-foreground/80"
             rows={1}
             autoFocus
             aria-label="Message input"
@@ -202,12 +210,36 @@ const MessageError: FC = () => {
 };
 
 const AssistantMessage: FC = () => {
+  const showThinking = useAuiState((s) => {
+    if (!s.thread.isRunning) return false;
+
+    return !s.message.parts.some(
+      (part) =>
+        (part.type === "text" && part.text.trim().length > 0) ||
+        part.type === "reasoning" ||
+        part.type === "tool-call" ||
+        part.type === "source" ||
+        part.type === "file" ||
+        part.type === "image" ||
+        part.type === "data",
+    );
+  });
+
   return (
     <MessagePrimitive.Root
       className="aui-assistant-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full max-w-(--thread-max-width) animate-in py-3 duration-150"
       data-role="assistant"
     >
       <div className="aui-assistant-message-content wrap-break-word px-2 text-foreground leading-relaxed">
+        {showThinking ? (
+          <div className="flex items-center py-1 text-foreground/85">
+            <span className="flex items-center gap-1.5" aria-label="Assistant is thinking">
+              <span className="size-2.5 animate-bounce rounded-full bg-foreground/80 shadow-[0_0_10px_rgba(255,255,255,0.22)] [animation-delay:0ms]" />
+              <span className="size-2.5 animate-bounce rounded-full bg-foreground/90 shadow-[0_0_12px_rgba(255,255,255,0.28)] [animation-delay:150ms]" />
+              <span className="size-2.5 animate-bounce rounded-full bg-foreground shadow-[0_0_14px_rgba(255,255,255,0.34)] [animation-delay:300ms]" />
+            </span>
+          </div>
+        ) : null}
         <MessagePrimitive.Parts>
           {({ part }) => {
             if (part.type === "text") return <MarkdownText />;
@@ -219,10 +251,12 @@ const AssistantMessage: FC = () => {
         <MessageError />
       </div>
 
-      <div className="aui-assistant-message-footer mt-1 ml-2 flex min-h-6 items-center">
-        <BranchPicker />
-        <AssistantActionBar />
-      </div>
+      {!showThinking ? (
+        <div className="aui-assistant-message-footer mt-1 ml-2 flex min-h-6 items-center">
+          <BranchPicker />
+          <AssistantActionBar />
+        </div>
+      ) : null}
     </MessagePrimitive.Root>
   );
 };
@@ -318,7 +352,7 @@ const EditComposer: FC = () => {
     <MessagePrimitive.Root className="aui-edit-composer-wrapper mx-auto flex w-full max-w-(--thread-max-width) flex-col px-2 py-3">
       <ComposerPrimitive.Root className="aui-edit-composer-root ml-auto flex w-full max-w-[85%] flex-col rounded-2xl bg-muted">
         <ComposerPrimitive.Input
-          className="aui-edit-composer-input min-h-14 w-full resize-none bg-transparent p-4 text-foreground text-sm outline-none"
+          className="aui-edit-composer-input min-h-14 w-full resize-none bg-transparent p-4 text-base text-foreground outline-none"
           autoFocus
         />
         <div className="aui-edit-composer-footer mx-3 mb-3 flex items-center gap-2 self-end">

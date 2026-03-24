@@ -10,6 +10,7 @@ import type { FC, PropsWithChildren } from "react";
 
 type AssistantSidebarProps = PropsWithChildren<{
   sidebarCollapsed: boolean;
+  hydrating?: boolean;
   onToggleSidebar: () => void;
   modelOptions: ModelOption[];
 }>;
@@ -17,6 +18,7 @@ type AssistantSidebarProps = PropsWithChildren<{
 export const AssistantSidebar: FC<AssistantSidebarProps> = ({
   children,
   sidebarCollapsed,
+  hydrating,
   onToggleSidebar,
   modelOptions,
 }) => {
@@ -72,7 +74,7 @@ export const AssistantSidebar: FC<AssistantSidebarProps> = ({
           </header>
 
           <div className="min-h-0 flex-1">
-            <Thread />
+            <Thread hydrating={hydrating} />
           </div>
         </section>
       </div>
