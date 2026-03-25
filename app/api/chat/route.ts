@@ -1,4 +1,3 @@
-import { createMCPClient, type MCPClient } from "@ai-sdk/mcp";
 import { createOpenAI } from "@ai-sdk/openai";
 import { frontendTools } from "@assistant-ui/react-ai-sdk";
 import {
@@ -7,12 +6,19 @@ import {
   streamText,
   type UIMessage,
 } from "ai";
+import { bigqueryTools } from "@/lib/bigquery-tools";
+import fs from "fs";
+import path from "path";
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const volcengineApiKey = process.env.ARK_API_KEY ?? process.env.DEEPSEEK_KEY;
 const defaultVolcengineChatModel = process.env.ARK_CHAT_MODEL;
-const mcpToolboxUrl = process.env.MCP_TOOLBOX_URL;
+
+const bigSkillPrompt = fs.readFileSync(
+  path.join(process.cwd(), "prompts/big-skill.md"),
+  "utf-8",
+);
 
 const volcengine = createOpenAI({
   name: "volcengine",
@@ -48,34 +54,14 @@ export async function POST(req: Request) {
       ? config.modelName
       : defaultVolcengineChatModel;
 
-  // 连接 MCP Toolbox（BigQuery 工具）
-  let mcpTools = {};
-  let mcpClient: MCPClient | undefined;
-  if (mcpToolboxUrl) {
-    try {
-      mcpClient = await createMCPClient({
-        transport: {
-          type: "http",
-          url: `${mcpToolboxUrl}/mcp`,
-        },
-      });
-      mcpTools = await mcpClient.tools();
-    } catch (e) {
-      console.error("[MCP] Failed to connect to MCP Toolbox:", e);
-    }
-  }
-
   const result = streamText({
     model: volcengine.chat(resolvedModelName),
     messages: await convertToModelMessages(messages),
     tools: {
       ...frontendTools(tools ?? {}),
-      ...mcpTools,
+      ...bigqueryTools,
     },
-    ...(system === undefined ? {} : { system }),
-    onFinish: async () => {
-      await mcpClient?.close();
-    },
+    system: system ? `${bigSkillPrompt}\n\n${system}` : bigSkillPrompt,
   });
 
   return result.toUIMessageStreamResponse();
