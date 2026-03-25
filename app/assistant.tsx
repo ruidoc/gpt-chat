@@ -130,7 +130,7 @@ export const Assistant = ({ initialThreadId }: AssistantProps) => {
           message.role === "assistant" &&
           message.parts.some(
             (part) =>
-              (part.type === "text" && part.text.trim().length > 0) ||
+              (part.type === "text" && (part.text?.trim().length ?? 0) > 0) ||
               part.type === "reasoning" ||
               part.type === "tool-call"
           )

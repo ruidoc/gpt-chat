@@ -44,7 +44,7 @@ export const Thread: FC<ThreadProps> = ({ hydrating }) => {
     <ThreadPrimitive.Root
       className="aui-root aui-thread-root @container flex h-full flex-col bg-background"
       style={{
-        ["--thread-max-width" as string]: "44rem",
+        ["--thread-max-width" as string]: "50rem",
         ["--composer-radius" as string]: "24px",
         ["--composer-padding" as string]: "10px",
       }}
@@ -215,7 +215,7 @@ const AssistantMessage: FC = () => {
 
     return !s.message.parts.some(
       (part) =>
-        (part.type === "text" && part.text.trim().length > 0) ||
+        (part.type === "text" && (part.text?.trim().length ?? 0) > 0) ||
         part.type === "reasoning" ||
         part.type === "tool-call" ||
         part.type === "source" ||
@@ -230,7 +230,7 @@ const AssistantMessage: FC = () => {
       className="aui-assistant-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full max-w-(--thread-max-width) animate-in py-3 duration-150"
       data-role="assistant"
     >
-      <div className="aui-assistant-message-content wrap-break-word px-2 text-foreground leading-relaxed">
+      <div className="aui-assistant-message-content min-w-0 wrap-break-word px-2 text-foreground leading-relaxed">
         {showThinking ? (
           <div className="flex items-center py-1 text-foreground/85">
             <span className="flex items-center gap-1.5" aria-label="Assistant is thinking">

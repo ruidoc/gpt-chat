@@ -8,26 +8,54 @@ const bigquery = new BigQuery({
   projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
 });
 
+const runBigQuerySqlParameters = z.object({
+  sql: z
+    .string()
+    .optional()
+    .describe(
+      "Read-only BigQuery SELECT. **Always use this key** for the SQL string.",
+    ),
+  query: z
+    .string()
+    .optional()
+    .describe(
+      "Do not use. If the model mistakenly sends SQL here (old habit), the server merges it into `sql`.",
+    ),
+  maxResults: z
+    .number()
+    .optional()
+    .describe("Maximum rows to return (default 500)."),
+});
+
+const dryRunBigQuerySqlParameters = z.object({
+  sql: z.string().optional().describe("SQL to dry-run. **Always use this key**."),
+  query: z
+    .string()
+    .optional()
+    .describe(
+      "Do not use; merged into `sql` only if `sql` is empty (legacy mistaken key).",
+    ),
+});
+
 export const bigqueryTools = {
-  query: tool({
+  run_bigquery_sql: tool({
     description:
-      "Execute a read-only BigQuery SQL query and return results. Only SELECT statements are allowed. Use backtick-quoted full table paths like `project.dataset.table`.",
-    parameters: z.object({
-      query: z
-        .string()
-        .describe("The SQL SELECT query to execute."),
-      maxResults: z
-        .number()
-        .optional()
-        .describe("Maximum rows to return (default 500)."),
-    }),
-    execute: async ({ query, maxResults = 500 }) => {
-      const trimmed = query.trim().toLowerCase();
-      if (!trimmed.startsWith("select")) {
+      "Execute a read-only BigQuery SELECT and return rows. Only SELECT is allowed. Use backtick-quoted tables like `project.dataset.table`. You MUST pass the statement in the `sql` argument (string).",
+    inputSchema: runBigQuerySqlParameters,
+    execute: async ({ sql, query: queryField, maxResults = 500 }) => {
+      const statement = (sql ?? queryField ?? "").trim();
+      if (!statement) {
+        return {
+          error:
+            "Missing SQL: set the `sql` parameter to your SELECT string (do not use `query` as the key).",
+        };
+      }
+      const lowered = statement.toLowerCase();
+      if (!lowered.startsWith("select")) {
         return { error: "Only SELECT queries are allowed." };
       }
       try {
-        const [rows] = await bigquery.query({ query, maxResults });
+        const [rows] = await bigquery.query({ query: statement, maxResults });
         return { rows, rowCount: rows.length };
       } catch (e: any) {
         return { error: e.message };
@@ -35,15 +63,24 @@ export const bigqueryTools = {
     },
   }),
 
-  dry_run_query: tool({
+  dry_run_bigquery_sql: tool({
     description:
-      "Validate a SQL query and estimate its processing cost without executing it. Use this before running expensive queries.",
-    parameters: z.object({
-      query: z.string().describe("The SQL query to validate."),
-    }),
-    execute: async ({ query }) => {
+      "Validate a BigQuery SQL statement and estimate bytes/cost without executing it. Use before expensive queries. Pass SQL in the `sql` argument.",
+    inputSchema: dryRunBigQuerySqlParameters,
+    execute: async ({ sql, query: queryField }) => {
+      const statement = (sql ?? queryField ?? "").trim();
+      if (!statement) {
+        return {
+          valid: false,
+          error:
+            "Missing SQL: set the `sql` parameter (do not use `query` as the key).",
+        };
+      }
       try {
-        const [job] = await bigquery.createQueryJob({ query, dryRun: true });
+        const [job] = await bigquery.createQueryJob({
+          query: statement,
+          dryRun: true,
+        });
         const bytes = parseInt(
           job.metadata?.statistics?.totalBytesProcessed ?? "0",
         );
@@ -63,7 +100,7 @@ export const bigqueryTools = {
   list_all_datasets: tool({
     description:
       "List all available BigQuery datasets in the configured project.",
-    parameters: z.object({}),
+    inputSchema: z.object({}),
     execute: async () => {
       try {
         const [datasets] = await bigquery.getDatasets();
@@ -76,13 +113,25 @@ export const bigqueryTools = {
 
   list_all_tables_with_dataset: tool({
     description:
-      "List all tables in a BigQuery dataset, including their schemas, types and descriptions.",
-    parameters: z.object({
-      datasetId: z.string().describe("The dataset ID to inspect."),
+      "List all tables in a BigQuery dataset, including their schemas, types and descriptions. datasetId can be 'project.dataset' or just 'dataset'.",
+    inputSchema: z.object({
+      datasetId: z
+        .string()
+        .describe("The dataset ID to inspect. Supports 'project.dataset' or just 'dataset'."),
     }),
     execute: async ({ datasetId }) => {
       try {
-        const [tables] = await bigquery.dataset(datasetId).getTables();
+        let projectOverride: string | undefined;
+        let actualDatasetId = datasetId;
+        if (datasetId.includes(".")) {
+          const parts = datasetId.split(".");
+          projectOverride = parts[0];
+          actualDatasetId = parts[1];
+        }
+        const dataset = projectOverride
+          ? bigquery.dataset(actualDatasetId, { projectId: projectOverride })
+          : bigquery.dataset(actualDatasetId);
+        const [tables] = await dataset.getTables();
         const tableInfos = await Promise.all(
           tables.map(async (table) => {
             const [meta] = await table.getMetadata();
@@ -100,7 +149,7 @@ export const bigqueryTools = {
             };
           }),
         );
-        return { datasetId, tables: tableInfos };
+        return { datasetId: actualDatasetId, tables: tableInfos };
       } catch (e: any) {
         return { error: e.message };
       }
@@ -110,8 +159,10 @@ export const bigqueryTools = {
   get_table_information: tool({
     description:
       "Get schema and up to 20 sample rows from a specific BigQuery table. For partitioned tables, provide a partition value to avoid full scans.",
-    parameters: z.object({
-      datasetId: z.string().describe("The dataset ID."),
+    inputSchema: z.object({
+      datasetId: z
+        .string()
+        .describe("The dataset ID. Supports 'project.dataset' or just 'dataset'."),
       tableId: z.string().describe("The table ID."),
       partition: z
         .string()
@@ -122,9 +173,20 @@ export const bigqueryTools = {
     }),
     execute: async ({ datasetId, tableId, partition }) => {
       try {
-        const table = bigquery.dataset(datasetId).table(tableId);
+        let projectOverride: string | undefined;
+        let actualDatasetId = datasetId;
+        if (datasetId.includes(".")) {
+          const parts = datasetId.split(".");
+          projectOverride = parts[0];
+          actualDatasetId = parts[1];
+        }
+        const dataset = projectOverride
+          ? bigquery.dataset(actualDatasetId, { projectId: projectOverride })
+          : bigquery.dataset(actualDatasetId);
+        const table = dataset.table(tableId);
         const [meta] = await table.getMetadata();
-        const projectId = meta.tableReference?.projectId;
+        const resolvedProjectId =
+          projectOverride ?? meta.tableReference?.projectId;
         const schema =
           meta.schema?.fields?.map((f: any) => ({
             name: f.name,
@@ -133,7 +195,7 @@ export const bigqueryTools = {
             description: f.description ?? "",
           })) ?? [];
 
-        let sampleQuery = `SELECT * FROM \`${projectId}.${datasetId}.${tableId}\``;
+        let sampleQuery = `SELECT * FROM \`${resolvedProjectId}.${actualDatasetId}.${tableId}\``;
         if (partition && meta.timePartitioning) {
           const partitionField =
             meta.timePartitioning.field ?? "_PARTITIONTIME";
