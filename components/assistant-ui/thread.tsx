@@ -44,7 +44,7 @@ export const Thread: FC<ThreadProps> = ({ hydrating }) => {
     <ThreadPrimitive.Root
       className="aui-root aui-thread-root @container flex h-full flex-col bg-background"
       style={{
-        ["--thread-max-width" as string]: "50rem",
+        ["--thread-max-width" as string]: "48rem",
         ["--composer-radius" as string]: "24px",
         ["--composer-padding" as string]: "10px",
       }}
@@ -101,11 +101,11 @@ const ThreadWelcome: FC = () => {
     <div className="aui-thread-welcome-root mx-auto my-auto flex w-full max-w-(--thread-max-width) grow flex-col">
       <div className="aui-thread-welcome-center flex w-full grow flex-col items-center justify-center">
         <div className="aui-thread-welcome-message flex size-full flex-col justify-center px-4">
-          <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both font-semibold text-2xl duration-200">
-            Hello there!
+          <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both font-semibold text-2xl duration-200 mb-3">
+            你好，欢迎使用 DataTalk
           </h1>
           <p className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-muted-foreground text-xl delay-75 duration-200">
-            How can I help you today?
+            有什么数据想了解的？
           </p>
         </div>
       </div>
@@ -150,7 +150,7 @@ const Composer: FC = () => {
         >
           <ComposerAttachments />
           <ComposerPrimitive.Input
-            placeholder="Send a message..."
+            placeholder="想查什么，告诉我..."
             className="aui-composer-input max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-base outline-none placeholder:text-muted-foreground/80"
             rows={1}
             autoFocus

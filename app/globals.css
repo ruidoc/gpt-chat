@@ -135,6 +135,10 @@
 
 /* Streamdown：链接外观对齐旧版 aui-md（不替换组件，保留外链确认 modal） */
 @layer components {
+  .aui-streamdown {
+    line-height: 26px;
+  }
+
   .aui-streamdown [data-streamdown="link"] {
     @apply underline-offset-2 hover:text-primary/80;
   }

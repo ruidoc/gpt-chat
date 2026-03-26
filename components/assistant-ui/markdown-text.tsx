@@ -62,10 +62,7 @@ const SimpleTable: NonNullable<Components["table"]> = ({
 const baseChatComponents: Partial<Components> = {
   p: ({ className, ...props }) => (
     <p
-      className={cn(
-        "my-2.5 leading-normal first:mt-0 last:mb-0",
-        className,
-      )}
+      className={cn("my-2.5 first:mt-0 last:mb-0", className)}
       {...props}
     />
   ),
@@ -97,7 +94,7 @@ const baseChatComponents: Partial<Components> = {
     />
   ),
   li: ({ className, ...props }) => (
-    <li className={cn("py-0.5 leading-normal [&>p]:inline", className)} {...props} />
+    <li className={cn("py-0.5 [&>p]:inline", className)} {...props} />
   ),
   hr: ({ className, ...props }) => (
     <hr
@@ -189,6 +186,24 @@ const baseChatComponents: Partial<Components> = {
       {...props}
     />
   ),
+  /**
+   * Streamdown 内部表头/单元格为 text-sm、px-4、py-2（见 streamdown 默认）。
+   * 自定义组件若只合并 `py-3`，有时会拿不到完整 className，会继承外层 `text-base` → 字号变大。
+   * 因此先铺齐与默认一致的排版类，再以 `py-3` 覆盖默认 `py-2`。
+   */
+  th: ({ className, ...props }) => (
+    <th
+      className={cn(
+        "whitespace-nowrap px-4 text-left font-semibold text-sm",
+        className,
+        "py-3",
+      )}
+      {...props}
+    />
+  ),
+  td: ({ className, ...props }) => (
+    <td className={cn("px-4 text-sm", className, "py-3")} {...props} />
+  ),
 };
 
 type StreamdownProps = ComponentProps<typeof Streamdown>;
@@ -208,7 +223,7 @@ const MarkdownTextInner = () => {
 
   return (
     <Streamdown
-      className="aui-streamdown max-w-none min-w-0 w-full text-base leading-relaxed"
+      className="aui-streamdown max-w-none min-w-0 w-full text-base"
       components={markdownComponents}
       {...(streamdownTableControls !== undefined
         ? { controls: streamdownTableControls }

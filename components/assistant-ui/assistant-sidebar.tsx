@@ -5,7 +5,8 @@ import {
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { Thread } from "@/components/assistant-ui/thread";
 import { cn } from "@/lib/utils";
-import { MessageSquareTextIcon, PanelLeftIcon, ShareIcon } from "lucide-react";
+import { ChartNoAxesCombinedIcon, PanelLeftIcon, ShareIcon } from "lucide-react";
+import Link from "next/link";
 import type { FC, PropsWithChildren } from "react";
 
 type AssistantSidebarProps = PropsWithChildren<{
@@ -34,10 +35,10 @@ export const AssistantSidebar: FC<AssistantSidebarProps> = ({
           )}
         >
           <div className="flex h-14 shrink-0 items-center px-4">
-            <div className="flex items-center gap-2 font-medium text-sm">
-              <MessageSquareTextIcon className="size-5" strokeWidth={2} />
-              <span className="text-foreground/90">助手界面</span>
-            </div>
+            <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
+              <ChartNoAxesCombinedIcon className="size-6 text-indigo-400" strokeWidth={2.2} />
+              <span className="font-[family-name:var(--font-sora)] text-[18px] font-semibold tracking-tight text-foreground pt-1">DataTalk</span>
+            </Link>
           </div>
           <div className="flex-1 overflow-y-auto px-3 py-2">{children}</div>
         </aside>
