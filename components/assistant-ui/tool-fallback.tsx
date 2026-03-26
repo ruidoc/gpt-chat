@@ -468,7 +468,7 @@ function ToolFallbackResult({
 
   const failed = toolOutputHasError(result);
   const body =
-    typeof result === "string" ? result : JSON.stringify(result, null, 2);
+    typeof result === "string" ? result : JSON.stringify(result);
 
   return (
     <div
@@ -486,7 +486,13 @@ function ToolFallbackResult({
             : "Failed"
           : "Result"}
       </SectionLabel>
-      <JsonCodeBlock source={body} />
+      <div
+        className="max-h-64 overflow-y-auto rounded-lg border border-zinc-200/80 bg-zinc-50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-950/80"
+      >
+        <pre className="font-mono text-[12px] leading-relaxed whitespace-pre-wrap break-all text-zinc-700 dark:text-zinc-300">
+          {body}
+        </pre>
+      </div>
     </div>
   );
 }
