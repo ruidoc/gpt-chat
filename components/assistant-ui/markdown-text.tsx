@@ -4,6 +4,7 @@ import "@assistant-ui/react-markdown/styles/dot.css";
 import "streamdown/styles.css";
 
 import { INTERNAL, useMessagePartText } from "@assistant-ui/react";
+import { code } from "@streamdown/code";
 import { Streamdown, type Components } from "streamdown";
 import {
   forwardRef,
@@ -215,6 +216,7 @@ const MarkdownTextInner = () => {
       isAnimating={isAnimating}
       mode={isAnimating ? "streaming" : "static"}
       parseIncompleteMarkdown={isAnimating}
+      plugins={{ code }}
       shikiTheme={["github-light", "github-dark"]}
     >
       {text}

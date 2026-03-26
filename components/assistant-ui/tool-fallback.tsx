@@ -4,6 +4,7 @@ import { Fragment, memo, useCallback, useRef, useState } from "react";
 import {
   CheckIcon,
   ChevronDownIcon,
+  CircleCheckBigIcon,
   CircleIcon,
   ClockIcon,
   LoaderIcon,
@@ -11,6 +12,7 @@ import {
   XCircleIcon,
 } from "lucide-react";
 import {
+  useAuiState,
   useScrollLock,
   type ToolCallMessagePartStatus,
   type ToolCallMessagePartComponent,
@@ -149,21 +151,158 @@ type ToolStatus = ToolCallMessagePartStatus["type"];
 type BadgeSpec = {
   label: string;
   Icon: React.ElementType;
-  badgeClass: string;
   iconClass: string;
 };
+
+const BADGE_BASE_CLASS =
+  "bg-zinc-100 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400";
+
+/** Softer warning tone for tool failures (not alarm red). */
+const FAILED_ICON_CLASS =
+  "text-amber-700/85 dark:text-amber-400/95";
+const FAILED_CALLOUT_CLASS =
+  "border-amber-200/90 bg-amber-50/90 text-amber-950 dark:border-amber-500/22 dark:bg-amber-500/[0.09] dark:text-amber-100/95";
+
+/** When the whole chain ended in failure: last tool uses strong red “Error”. */
+const ERROR_ICON_CLASS = "text-red-600 dark:text-red-400";
+const ERROR_CALLOUT_CLASS =
+  "border-red-200 bg-red-50 text-red-800 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-200";
+
+const COMPLETED_ICON_CLASS =
+  "text-emerald-600 dark:text-emerald-400";
+
+type MessagePartLike = { type?: string; toolCallId?: string };
+
+type ToolCallPartState = MessagePartLike & {
+  isError?: boolean;
+  result?: unknown;
+  status?: ToolCallMessagePartStatus;
+};
+
+function partIsTerminalFailedTool(p: unknown): boolean {
+  const part = p as ToolCallPartState;
+  if (part.type !== "tool-call") return false;
+  if (part.isError) return true;
+  const st = part.status?.type;
+  if (st === "incomplete") {
+    return part.status?.reason !== "cancelled";
+  }
+  if (st === "complete") {
+    return toolOutputHasError(part.result);
+  }
+  return false;
+}
+
+/** Last `tool-call` in this assistant message (text/reasoning may follow). */
+function useIsLastToolCallInMessage(toolCallId: string | undefined): boolean {
+  return useAuiState((s) => {
+    if (!toolCallId) return false;
+    const { parts } = s.message;
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i] as MessagePartLike;
+      if (p.type === "tool-call") {
+        return p.toolCallId === toolCallId;
+      }
+    }
+    return false;
+  });
+}
+
+function useFinalSuccessfulToolCallUi(
+  toolCallId: string | undefined,
+  statusType: ToolStatus,
+  outputHasError: boolean,
+  isCancelled: boolean,
+): boolean {
+  const isLastToolCall = useIsLastToolCallInMessage(toolCallId);
+  const turnFinished = useAuiState((s) => !s.thread.isRunning);
+  return (
+    isLastToolCall &&
+    turnFinished &&
+    statusType === "complete" &&
+    !outputHasError &&
+    !isCancelled
+  );
+}
+
+/** Turn finished, every tool call in this message failed, and this is the last one → red Error. */
+function useFinalAllFailedChainErrorUi(
+  toolCallId: string | undefined,
+  isCancelled: boolean,
+  statusType: ToolStatus,
+  outputHasError: boolean,
+): boolean {
+  return useAuiState((s) => {
+    if (!toolCallId || isCancelled || s.thread.isRunning) return false;
+    const currentFailed =
+      (statusType === "complete" && outputHasError) ||
+      (statusType === "incomplete" && !isCancelled);
+    if (!currentFailed) return false;
+
+    const { parts } = s.message;
+    let lastToolId: string | undefined;
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i] as ToolCallPartState;
+      if (p.type === "tool-call") {
+        lastToolId = p.toolCallId;
+        break;
+      }
+    }
+    if (lastToolId !== toolCallId) return false;
+
+    const toolParts = parts.filter(
+      (p) => (p as ToolCallPartState).type === "tool-call",
+    );
+    return (
+      toolParts.length > 0 && toolParts.every((p) => partIsTerminalFailedTool(p))
+    );
+  });
+}
+
+/** Tool returned `{ error: ... }` (or transport mapped it onto `result`) — surface as Failed, not success. */
+function toolOutputHasError(result: unknown): boolean {
+  if (result === null || result === undefined) return false;
+  if (typeof result !== "object") return false;
+  if (!("error" in result)) return false;
+  const err = (result as { error?: unknown }).error;
+  if (err === undefined || err === null) return false;
+  if (typeof err === "string") return err.trim().length > 0;
+  return true;
+}
 
 function getStatusBadge(
   statusType: ToolStatus,
   isCancelled: boolean,
+  outputHasError: boolean,
+  isFinalSuccessfulToolCall: boolean,
+  isFinalAllFailedErrorChain: boolean,
 ): BadgeSpec {
   if (isCancelled) {
     return {
       label: "Cancelled",
       Icon: XCircleIcon,
-      badgeClass:
-        "border-zinc-300 bg-zinc-100 text-zinc-600 dark:border-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-400",
       iconClass: "text-zinc-500 dark:text-zinc-500",
+    };
+  }
+  if (isFinalAllFailedErrorChain) {
+    return {
+      label: "Error",
+      Icon: XCircleIcon,
+      iconClass: ERROR_ICON_CLASS,
+    };
+  }
+  if (outputHasError && statusType === "complete") {
+    return {
+      label: "Failed",
+      Icon: XCircleIcon,
+      iconClass: FAILED_ICON_CLASS,
+    };
+  }
+  if (isFinalSuccessfulToolCall) {
+    return {
+      label: "Completed",
+      Icon: CircleCheckBigIcon,
+      iconClass: COMPLETED_ICON_CLASS,
     };
   }
   switch (statusType) {
@@ -171,41 +310,31 @@ function getStatusBadge(
       return {
         label: "Running",
         Icon: LoaderIcon,
-        badgeClass:
-          "border-zinc-300 bg-zinc-100 text-zinc-700 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-300",
         iconClass: "text-zinc-600 dark:text-zinc-400 animate-spin",
       };
     case "complete":
       return {
         label: "Responded",
         Icon: CheckIcon,
-        badgeClass:
-          "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/35 dark:bg-blue-500/15 dark:text-blue-300",
         iconClass: "text-blue-600 dark:text-blue-400",
       };
     case "requires-action":
       return {
         label: "Awaiting Approval",
         Icon: ClockIcon,
-        badgeClass:
-          "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/12 dark:text-amber-200",
         iconClass: "text-amber-600 dark:text-amber-400",
       };
     case "incomplete":
       return {
         label: "Failed",
         Icon: XCircleIcon,
-        badgeClass:
-          "border-red-200 bg-red-50 text-red-800 dark:border-red-500/35 dark:bg-red-500/12 dark:text-red-300",
-        iconClass: "text-red-600 dark:text-red-400",
+        iconClass: FAILED_ICON_CLASS,
       };
     default:
       return {
         label: "Pending",
         Icon: CircleIcon,
-        badgeClass:
-          "border-zinc-300 bg-zinc-50 text-zinc-600 dark:border-zinc-600 dark:bg-zinc-900/60 dark:text-zinc-400",
-        iconClass: "text-zinc-500",
+        iconClass: "text-zinc-500 dark:text-zinc-400",
       };
   }
 }
@@ -213,18 +342,28 @@ function getStatusBadge(
 function ToolFallbackTrigger({
   toolName,
   status,
+  result,
+  isFinalSuccessfulToolCall,
+  isFinalAllFailedErrorChain,
   className,
   ...props
 }: React.ComponentProps<typeof CollapsibleTrigger> & {
   toolName: string;
   status?: ToolCallMessagePartStatus;
+  result?: unknown;
+  isFinalSuccessfulToolCall?: boolean;
+  isFinalAllFailedErrorChain?: boolean;
 }) {
   const statusType = status?.type ?? "complete";
   const isCancelled =
     status?.type === "incomplete" && status.reason === "cancelled";
-  const { label, Icon, badgeClass, iconClass } = getStatusBadge(
+  const outputHasError = toolOutputHasError(result);
+  const { label, Icon, iconClass } = getStatusBadge(
     statusType,
     isCancelled,
+    outputHasError,
+    Boolean(isFinalSuccessfulToolCall),
+    Boolean(isFinalAllFailedErrorChain),
   );
 
   return (
@@ -239,19 +378,19 @@ function ToolFallbackTrigger({
       )}
       {...props}
     >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200/90 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900/90">
+      <span className="flex shrink-0 items-center justify-center">
         <WrenchIcon
           className="size-4 text-zinc-600 dark:text-zinc-400"
           aria-hidden
         />
       </span>
-      <span className="min-w-0 shrink font-mono text-[13px] text-foreground leading-none tracking-tight">
+      <span className="min-w-0 shrink font-mono text-[14px] text-foreground leading-none tracking-tight">
         {toolName}
       </span>
       <span
         className={cn(
-          "inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-0.5 font-sans text-[11px] font-medium",
-          badgeClass,
+          "inline-flex shrink-0 items-center gap-1.5 rounded-xl px-2 py-0.5 font-sans text-[12px] font-medium",
+          BADGE_BASE_CLASS,
           isCancelled && "line-through opacity-80",
         )}
       >
@@ -307,7 +446,7 @@ function ToolFallbackArgs({
   return (
     <div
       data-slot="tool-fallback-args"
-      className={cn("aui-tool-fallback-args px-4 pt-4", className)}
+      className={cn("aui-tool-fallback-args px-4 py-4", className)}
       {...props}
     >
       <SectionLabel>Parameters</SectionLabel>
@@ -318,13 +457,16 @@ function ToolFallbackArgs({
 
 function ToolFallbackResult({
   result,
+  isFinalAllFailedErrorChain,
   className,
   ...props
 }: React.ComponentProps<"div"> & {
   result?: unknown;
+  isFinalAllFailedErrorChain?: boolean;
 }) {
   if (result === undefined) return null;
 
+  const failed = toolOutputHasError(result);
   const body =
     typeof result === "string" ? result : JSON.stringify(result, null, 2);
 
@@ -332,12 +474,18 @@ function ToolFallbackResult({
     <div
       data-slot="tool-fallback-result"
       className={cn(
-        "aui-tool-fallback-result border-zinc-200/60 border-t px-4 pt-4 dark:border-zinc-800/80",
+        "aui-tool-fallback-result border-zinc-200/60 border-t px-4 py-4 dark:border-zinc-800/80",
         className,
       )}
       {...props}
     >
-      <SectionLabel>Result</SectionLabel>
+      <SectionLabel>
+        {failed
+          ? isFinalAllFailedErrorChain
+            ? "Error"
+            : "Failed"
+          : "Result"}
+      </SectionLabel>
       <JsonCodeBlock source={body} />
     </div>
   );
@@ -345,10 +493,12 @@ function ToolFallbackResult({
 
 function ToolFallbackError({
   status,
+  isFinalAllFailedErrorChain,
   className,
   ...props
 }: React.ComponentProps<"div"> & {
   status?: ToolCallMessagePartStatus;
+  isFinalAllFailedErrorChain?: boolean;
 }) {
   if (status?.type !== "incomplete") return null;
 
@@ -362,7 +512,11 @@ function ToolFallbackError({
   if (!errorText) return null;
 
   const isCancelled = status.reason === "cancelled";
-  const headerText = isCancelled ? "Cancelled" : "Error";
+  const headerText = isCancelled
+    ? "Cancelled"
+    : isFinalAllFailedErrorChain
+      ? "Error"
+      : "Failed";
 
   return (
     <div
@@ -376,7 +530,9 @@ function ToolFallbackError({
           "rounded-lg border px-3 py-2 text-sm",
           isCancelled
             ? "border-zinc-200 bg-zinc-50 text-muted-foreground dark:border-zinc-700 dark:bg-zinc-900/50"
-            : "border-red-200 bg-red-50 text-red-800 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-200",
+            : isFinalAllFailedErrorChain
+              ? ERROR_CALLOUT_CLASS
+              : FAILED_CALLOUT_CLASS,
         )}
       >
         {errorText}
@@ -424,32 +580,44 @@ const ToolFallbackImpl: ToolCallMessagePartComponent = ({
   argsText,
   result,
   status,
+  toolCallId,
 }) => {
   const isCancelled =
     status?.type === "incomplete" && status.reason === "cancelled";
   const statusType = status?.type ?? "complete";
+  const outputHasError = toolOutputHasError(result);
+  const isFinalSuccessfulToolCall = useFinalSuccessfulToolCallUi(
+    typeof toolCallId === "string" ? toolCallId : undefined,
+    statusType,
+    outputHasError,
+    isCancelled,
+  );
+  const isFinalAllFailedErrorChain = useFinalAllFailedChainErrorUi(
+    typeof toolCallId === "string" ? toolCallId : undefined,
+    isCancelled,
+    statusType,
+    outputHasError,
+  );
 
   const defaultOpen = statusType === "requires-action";
-
-  const rootTone = cn(
-    isCancelled && "opacity-90",
-    statusType === "running" &&
-      "ring-1 ring-zinc-300/80 dark:ring-zinc-700",
-    statusType === "requires-action" &&
-      "ring-1 ring-amber-400/35 dark:ring-amber-500/25",
-    statusType === "incomplete" &&
-      !isCancelled &&
-      "ring-1 ring-red-300/50 dark:ring-red-500/20",
-  );
 
   return (
     <ToolFallbackRoot
       defaultOpen={defaultOpen}
-      className={cn("mb-3", rootTone)}
+      className={cn("mb-3", isCancelled && "opacity-90")}
     >
-      <ToolFallbackTrigger toolName={toolName} status={status} />
+      <ToolFallbackTrigger
+        toolName={toolName}
+        status={status}
+        result={result}
+        isFinalSuccessfulToolCall={isFinalSuccessfulToolCall}
+        isFinalAllFailedErrorChain={isFinalAllFailedErrorChain}
+      />
       <ToolFallbackContent>
-        <ToolFallbackError status={status} />
+        <ToolFallbackError
+          status={status}
+          isFinalAllFailedErrorChain={isFinalAllFailedErrorChain}
+        />
         <ToolFallbackArgs
           argsText={argsText}
           className={cn(isCancelled && "opacity-60")}
@@ -457,7 +625,12 @@ const ToolFallbackImpl: ToolCallMessagePartComponent = ({
         {statusType === "requires-action" ? (
           <ToolApprovalFooter toolName={toolName} />
         ) : null}
-        {!isCancelled && <ToolFallbackResult result={result} />}
+        {!isCancelled && (
+          <ToolFallbackResult
+            result={result}
+            isFinalAllFailedErrorChain={isFinalAllFailedErrorChain}
+          />
+        )}
       </ToolFallbackContent>
     </ToolFallbackRoot>
   );

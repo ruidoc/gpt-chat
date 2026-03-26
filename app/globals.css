@@ -2,6 +2,7 @@
 /* Streamdown：扫描 dist 内 Tailwind 类名（Tailwind v4 迁移要求）
  * https://streamdown.ai/docs/migrate */
 @source "../node_modules/streamdown/dist/*.js";
+@source "../node_modules/@streamdown/code/dist/*.js";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
