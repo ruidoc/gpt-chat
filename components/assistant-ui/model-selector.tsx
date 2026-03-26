@@ -97,7 +97,7 @@ function ModelSelectorTrigger({
       data-slot="model-selector-trigger"
       variant={variant}
       size={size}
-      className={cn("aui-model-selector-trigger", className)}
+      className={cn("aui-model-selector-trigger cursor-pointer", className)}
       {...props}
     >
       {children ?? <ModelSelectorValue />}
@@ -182,7 +182,7 @@ function ModelSelectorItem({
       value={model.id}
       textValue={model.name}
       className={cn(
-        "relative flex w-full cursor-default select-none items-center gap-2 rounded-lg py-2 pr-9 pl-3 text-sm outline-none",
+        "relative flex w-full cursor-pointer select-none items-center gap-2 rounded-lg py-2 pr-9 pl-3 text-sm outline-none",
         "focus:bg-accent focus:text-accent-foreground",
         "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className,

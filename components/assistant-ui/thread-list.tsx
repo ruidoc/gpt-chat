@@ -53,7 +53,7 @@ const ThreadListNew: FC<Pick<ThreadListProps, "onNewThread">> = ({
   return (
     <Button
       variant="outline"
-      className="mb-1 h-9 justify-start gap-2 rounded-lg px-3 text-sm hover:bg-muted"
+      className="mb-1 h-9 cursor-pointer justify-start gap-2 rounded-lg px-3 text-sm hover:bg-muted"
       onClick={onNewThread}
     >
       <PlusIcon className="size-4" />
@@ -90,13 +90,13 @@ const ThreadListItem: FC<{
   return (
     <div
       className={cn(
-        "group relative flex h-9 items-center rounded-lg transition-colors hover:bg-muted",
+        "group relative flex h-9 cursor-pointer items-center rounded-lg transition-colors hover:bg-muted",
         active && "bg-muted",
       )}
     >
       <button
         type="button"
-        className="flex h-full min-w-0 flex-1 items-center px-3 text-left text-sm"
+        className="flex h-full min-w-0 flex-1 cursor-pointer items-center px-3 text-left text-sm"
         onClick={() => onSelectThread(thread.id)}
       >
         <span className="min-w-0 flex-1 truncate">

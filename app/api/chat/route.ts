@@ -7,6 +7,7 @@ import {
   type UIMessage,
 } from "ai";
 import { bigqueryTools } from "@/lib/bigquery-tools";
+import { buildRuntimeContext } from "@/lib/runtime-context";
 import fs from "fs";
 import path from "path";
 
@@ -61,7 +62,9 @@ export async function POST(req: Request) {
       ...frontendTools(tools ?? {}),
       ...bigqueryTools,
     },
-    system: system ? `${bigSkillPrompt}\n\n${system}` : bigSkillPrompt,
+    system: [buildRuntimeContext(), bigSkillPrompt, system]
+      .filter(Boolean)
+      .join("\n\n"),
   });
 
   return result.toUIMessageStreamResponse();

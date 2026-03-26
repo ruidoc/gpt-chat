@@ -57,8 +57,8 @@ export const bigqueryTools = {
       try {
         const [rows] = await bigquery.query({ query: statement, maxResults });
         return { rows, rowCount: rows.length };
-      } catch (e: any) {
-        return { error: e.message };
+      } catch (e: unknown) {
+        return { error: e instanceof Error ? e.message : String(e) };
       }
     },
   }),
@@ -91,8 +91,8 @@ export const bigqueryTools = {
           gigabytesProcessed: gb.toFixed(3),
           estimatedCostUSD: (gb * 0.005).toFixed(4),
         };
-      } catch (e: any) {
-        return { valid: false, error: e.message };
+      } catch (e: unknown) {
+        return { valid: false, error: e instanceof Error ? e.message : String(e) };
       }
     },
   }),
@@ -105,8 +105,8 @@ export const bigqueryTools = {
       try {
         const [datasets] = await bigquery.getDatasets();
         return { datasets: datasets.map((d) => d.id) };
-      } catch (e: any) {
-        return { error: e.message };
+      } catch (e: unknown) {
+        return { error: e instanceof Error ? e.message : String(e) };
       }
     },
   }),
@@ -140,18 +140,18 @@ export const bigqueryTools = {
               description: meta.description ?? "",
               timePartitioning: meta.timePartitioning ?? null,
               schema:
-                meta.schema?.fields?.map((f: any) => ({
-                  name: f.name,
-                  type: f.type,
-                  mode: f.mode,
-                  description: f.description ?? "",
+                meta.schema?.fields?.map((f: Record<string, unknown>) => ({
+                  name: f.name as string,
+                  type: f.type as string,
+                  mode: f.mode as string,
+                  description: (f.description as string) ?? "",
                 })) ?? [],
             };
           }),
         );
         return { datasetId: actualDatasetId, tables: tableInfos };
-      } catch (e: any) {
-        return { error: e.message };
+      } catch (e: unknown) {
+        return { error: e instanceof Error ? e.message : String(e) };
       }
     },
   }),
@@ -188,11 +188,11 @@ export const bigqueryTools = {
         const resolvedProjectId =
           projectOverride ?? meta.tableReference?.projectId;
         const schema =
-          meta.schema?.fields?.map((f: any) => ({
-            name: f.name,
-            type: f.type,
-            mode: f.mode,
-            description: f.description ?? "",
+          meta.schema?.fields?.map((f: Record<string, unknown>) => ({
+            name: f.name as string,
+            type: f.type as string,
+            mode: f.mode as string,
+            description: (f.description as string) ?? "",
           })) ?? [];
 
         let sampleQuery = `SELECT * FROM \`${resolvedProjectId}.${actualDatasetId}.${tableId}\``;
@@ -205,8 +205,8 @@ export const bigqueryTools = {
 
         const [rows] = await bigquery.query({ query: sampleQuery });
         return { schema, sampleRows: rows };
-      } catch (e: any) {
-        return { error: e.message };
+      } catch (e: unknown) {
+        return { error: e instanceof Error ? e.message : String(e) };
       }
     },
   }),

@@ -252,7 +252,7 @@ const AssistantMessage: FC = () => {
       </div>
 
       {!showThinking ? (
-        <div className="aui-assistant-message-footer mt-1 ml-2 flex min-h-6 items-center">
+        <div className="aui-assistant-message-footer mt-0.5 ml-2 flex min-h-9 items-center">
           <BranchPicker />
           <AssistantActionBar />
         </div>

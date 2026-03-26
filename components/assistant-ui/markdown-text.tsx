@@ -62,7 +62,7 @@ const SimpleTable: NonNullable<Components["table"]> = ({
 const baseChatComponents: Partial<Components> = {
   p: ({ className, ...props }) => (
     <p
-      className={cn("my-2.5 first:mt-0 last:mb-0", className)}
+      className={cn("my-2.5 leading-[26px] first:mt-0 last:mb-0", className)}
       {...props}
     />
   ),
@@ -78,7 +78,7 @@ const baseChatComponents: Partial<Components> = {
   ul: ({ className, ...props }) => (
     <ul
       className={cn(
-        "my-2 ml-4 list-disc whitespace-normal marker:text-muted-foreground [&>li]:mt-1",
+        "my-2 ml-5.5 list-disc whitespace-normal marker:text-[#818cf8] [&>li]:mt-1",
         className,
       )}
       {...props}
@@ -87,14 +87,14 @@ const baseChatComponents: Partial<Components> = {
   ol: ({ className, ...props }) => (
     <ol
       className={cn(
-        "my-2 ml-4 list-decimal whitespace-normal marker:text-muted-foreground [&>li]:mt-1",
+        "my-2 ml-6 list-decimal whitespace-normal marker:text-[#818cf8] [&>li]:mt-1",
         className,
       )}
       {...props}
     />
   ),
   li: ({ className, ...props }) => (
-    <li className={cn("py-0.5 [&>p]:inline", className)} {...props} />
+    <li className={cn("py-0.5 pl-1 [&>p]:inline", className)} {...props} />
   ),
   hr: ({ className, ...props }) => (
     <hr
@@ -111,7 +111,7 @@ const baseChatComponents: Partial<Components> = {
   inlineCode: ({ className, ...props }) => (
     <code
       className={cn(
-        "rounded-md border border-border/50 bg-muted/50 px-1.5 py-0.5 font-mono text-[0.85em]",
+        "rounded-md bg-muted/50 px-1.5 py-0.5 font-mono text-[0.85em]",
         className,
       )}
       {...props}
