@@ -16,6 +16,11 @@ export const maxDuration = 60;
 const volcengineApiKey = process.env.ARK_API_KEY ?? process.env.DEEPSEEK_KEY;
 const defaultVolcengineChatModel = process.env.ARK_CHAT_MODEL;
 
+const analystGuidePrompt = fs.readFileSync(
+  path.join(process.cwd(), "prompts/analyst-guide.md"),
+  "utf-8",
+);
+
 const bigSkillPrompt = fs.readFileSync(
   path.join(process.cwd(), "prompts/big-skill.md"),
   "utf-8",
@@ -62,7 +67,7 @@ export async function POST(req: Request) {
       ...frontendTools(tools ?? {}),
       ...bigqueryTools,
     },
-    system: [buildRuntimeContext(), bigSkillPrompt, system]
+    system: [buildRuntimeContext(), analystGuidePrompt, bigSkillPrompt, system]
       .filter(Boolean)
       .join("\n\n"),
   });
