@@ -13,8 +13,26 @@ import path from "path";
 
 export const maxDuration = 60;
 
-const volcengineApiKey = process.env.ARK_API_KEY ?? process.env.DEEPSEEK_KEY;
-const defaultVolcengineChatModel = process.env.ARK_CHAT_MODEL;
+const arkApiKey = process.env.ARK_API_KEY ?? process.env.DEEPSEEK_KEY;
+const defaultChatModel =
+  process.env.CHAT_MODEL ??
+  process.env.ARK_CHAT_MODEL ??
+  process.env.NEWAPI_CHAT_MODEL;
+const newApiApiKey = process.env.NEWAPI_API_KEY;
+
+function normalizeOpenAICompatibleBaseURL(baseURL: string | undefined) {
+  if (!baseURL) return undefined;
+
+  const normalized = baseURL.trim().replace(/\/+$/, "");
+  if (!normalized) return undefined;
+
+  return normalized.endsWith("/v1") ? normalized : `${normalized}/v1`;
+}
+
+const newApiBaseURL = normalizeOpenAICompatibleBaseURL(
+  process.env.NEWAPI_BASE_URL ?? "http://newapi.dditapp.com",
+);
+const newApiClaudeModels = new Set(["claude-opus-4-6", "claude-sonnet-4-6"]);
 
 const analystGuidePrompt = fs.readFileSync(
   path.join(process.cwd(), "prompts/analyst-guide.md"),
@@ -26,21 +44,64 @@ const bigSkillPrompt = fs.readFileSync(
   "utf-8",
 );
 
-const volcengine = createOpenAI({
+const ark = createOpenAI({
   name: "volcengine",
-  apiKey: volcengineApiKey,
+  apiKey: arkApiKey,
   baseURL: "https://ark.cn-beijing.volces.com/api/v3",
 });
 
-export async function POST(req: Request) {
-  if (!volcengineApiKey) {
+const newApi = createOpenAI({
+  name: "newapi",
+  apiKey: newApiApiKey,
+  ...(newApiBaseURL ? { baseURL: newApiBaseURL } : {}),
+});
+
+function sanitizeMessages(messages: UIMessage[]): UIMessage[] {
+  return messages
+    .map((message) => ({
+      ...message,
+      parts: message.parts.filter((part) => {
+        if (part.type === "text" || part.type === "reasoning") {
+          return part.text.trim().length > 0;
+        }
+
+        return true;
+      }),
+    }))
+    .filter((message) => {
+      if (message.role === "assistant") {
+        return message.parts.length > 0;
+      }
+
+      return true;
+    });
+}
+
+function resolveChatModel(modelName: string) {
+  if (newApiClaudeModels.has(modelName)) {
+    if (!newApiApiKey) {
+      throw new Error(
+        "Missing `NEWAPI_API_KEY` environment variable for Claude models.",
+      );
+    }
+
+    if (!newApiBaseURL) {
+      throw new Error(
+        "Missing `NEWAPI_BASE_URL` environment variable for Claude models.",
+      );
+    }
+
+    return newApi.chat(modelName);
+  }
+
+  if (!arkApiKey) {
     throw new Error("Missing `ARK_API_KEY` or `DEEPSEEK_KEY` environment variable.");
   }
 
-  if (!defaultVolcengineChatModel) {
-    throw new Error("Missing `ARK_CHAT_MODEL` environment variable.");
-  }
+  return ark.chat(modelName);
+}
 
+export async function POST(req: Request) {
   const {
     messages,
     system,
@@ -57,12 +118,18 @@ export async function POST(req: Request) {
 
   const resolvedModelName =
     typeof config?.modelName === "string" && config.modelName.trim().length > 0
-      ? config.modelName
-      : defaultVolcengineChatModel;
+      ? config.modelName.trim()
+      : defaultChatModel;
+
+  if (!resolvedModelName) {
+    throw new Error(
+      "Missing `CHAT_MODEL`, `ARK_CHAT_MODEL`, or `NEWAPI_CHAT_MODEL` environment variable.",
+    );
+  }
 
   const result = streamText({
-    model: volcengine.chat(resolvedModelName),
-    messages: await convertToModelMessages(messages),
+    model: resolveChatModel(resolvedModelName),
+    messages: await convertToModelMessages(sanitizeMessages(messages)),
     tools: {
       ...frontendTools(tools ?? {}),
       ...bigqueryTools,

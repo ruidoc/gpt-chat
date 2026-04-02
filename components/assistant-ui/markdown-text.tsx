@@ -11,6 +11,7 @@ import {
   memo,
   type ComponentProps,
   type CSSProperties,
+  type HTMLAttributes,
 } from "react";
 
 import {
@@ -215,39 +216,51 @@ const markdownComponents: Partial<Components> = STREAMDOWN_TABLE_USE_WRAPPER
 const streamdownTableControls: StreamdownProps["controls"] | undefined =
   STREAMDOWN_TABLE_USE_WRAPPER ? undefined : { table: false };
 
+type ChatMarkdownProps = {
+  text: string;
+  isAnimating?: boolean;
+} & HTMLAttributes<HTMLDivElement>;
+
+export const ChatMarkdown = memo(function ChatMarkdown({
+  text,
+  isAnimating = false,
+  className,
+  ...props
+}: ChatMarkdownProps) {
+  return (
+    <div className={cn("aui-md wrap-break-word", className)} {...props}>
+      <Streamdown
+        className="aui-streamdown max-w-none min-w-0 w-full text-base"
+        components={markdownComponents}
+        {...(streamdownTableControls !== undefined
+          ? { controls: streamdownTableControls }
+          : {})}
+        isAnimating={isAnimating}
+        mode={isAnimating ? "streaming" : "static"}
+        parseIncompleteMarkdown={isAnimating}
+        plugins={{ code }}
+        shikiTheme={["github-light", "github-dark"]}
+      >
+        {text}
+      </Streamdown>
+    </div>
+  );
+});
+
 const MarkdownTextInner = () => {
   const messagePart = useMessagePartText();
   const { text } = useSmooth(messagePart, true);
   const status = useSmoothStatus();
   const isAnimating = status.type === "running";
 
-  return (
-    <Streamdown
-      className="aui-streamdown max-w-none min-w-0 w-full text-base"
-      components={markdownComponents}
-      {...(streamdownTableControls !== undefined
-        ? { controls: streamdownTableControls }
-        : {})}
-      isAnimating={isAnimating}
-      mode={isAnimating ? "streaming" : "static"}
-      parseIncompleteMarkdown={isAnimating}
-      plugins={{ code }}
-      shikiTheme={["github-light", "github-dark"]}
-    >
-      {text}
-    </Streamdown>
-  );
+  return <ChatMarkdown text={text} isAnimating={isAnimating} />;
 };
 
 const MarkdownTextOuter = forwardRef<HTMLDivElement, Record<string, never>>(
   function MarkdownTextOuter(_props, ref) {
     const status = useSmoothStatus();
     return (
-      <div
-        ref={ref}
-        className="aui-md wrap-break-word"
-        data-status={status.type}
-      >
+      <div ref={ref} data-status={status.type}>
         <MarkdownTextInner />
       </div>
     );

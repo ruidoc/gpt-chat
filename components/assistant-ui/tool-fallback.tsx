@@ -22,6 +22,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { ChatMarkdown } from "@/components/assistant-ui/markdown-text";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -45,7 +46,9 @@ function highlightJsonLine(line: string): React.ReactNode {
         {indent}
         <span className="text-sky-600 dark:text-sky-400">{keyMatch[1]}</span>
         {keyMatch[2]}
-        <span className="text-cyan-800 dark:text-cyan-200/90">{keyMatch[3]}</span>
+        <span className="text-cyan-800 dark:text-cyan-200/90">
+          {keyMatch[3]}
+        </span>
       </>
     );
   }
@@ -56,14 +59,20 @@ function highlightJsonLine(line: string): React.ReactNode {
   );
 }
 
-function JsonCodeBlock({ source, className }: { source: string; className?: string }) {
+function JsonCodeBlock({
+  source,
+  className,
+}: {
+  source: string;
+  className?: string;
+}) {
   const pretty = prettifyJsonOrRaw(source);
   const lines = pretty.split("\n");
   return (
     <div
       className={cn(
         "aui-tool-json-block overflow-x-auto rounded-lg border border-zinc-200/80 bg-zinc-50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-950/80",
-        className,
+        className
       )}
     >
       <pre className="font-mono text-[12px] leading-relaxed whitespace-pre-wrap">
@@ -120,7 +129,7 @@ function ToolFallbackRoot({
       }
       controlledOnOpenChange?.(open);
     },
-    [lockScroll, isControlled, controlledOnOpenChange],
+    [lockScroll, isControlled, controlledOnOpenChange]
   );
 
   return (
@@ -130,9 +139,9 @@ function ToolFallbackRoot({
       open={isOpen}
       onOpenChange={handleOpenChange}
       className={cn(
-        "aui-tool-fallback-root group/tool-fallback-root w-full overflow-hidden rounded-xl border border-zinc-200/90 bg-card shadow-sm",
+        "aui-tool-fallback-root group/tool-fallback-root w-full overflow-hidden rounded-xl border border-zinc-200/90 bg-card shadow-sm my-3",
         "dark:border-zinc-800 dark:bg-zinc-950/40",
-        className,
+        className
       )}
       style={
         {
@@ -158,8 +167,7 @@ const BADGE_BASE_CLASS =
   "bg-zinc-100 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400";
 
 /** Softer warning tone for tool failures (not alarm red). */
-const FAILED_ICON_CLASS =
-  "text-amber-700/85 dark:text-amber-400/95";
+const FAILED_ICON_CLASS = "text-amber-700/85 dark:text-amber-400/95";
 const FAILED_CALLOUT_CLASS =
   "border-amber-200/90 bg-amber-50/90 text-amber-950 dark:border-amber-500/22 dark:bg-amber-500/[0.09] dark:text-amber-100/95";
 
@@ -168,8 +176,7 @@ const ERROR_ICON_CLASS = "text-red-600 dark:text-red-400";
 const ERROR_CALLOUT_CLASS =
   "border-red-200 bg-red-50 text-red-800 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-200";
 
-const COMPLETED_ICON_CLASS =
-  "text-emerald-600 dark:text-emerald-400";
+const COMPLETED_ICON_CLASS = "text-emerald-600 dark:text-emerald-400";
 
 type MessagePartLike = { type?: string; toolCallId?: string };
 
@@ -212,7 +219,7 @@ function useFinalSuccessfulToolCallUi(
   toolCallId: string | undefined,
   statusType: ToolStatus,
   outputHasError: boolean,
-  isCancelled: boolean,
+  isCancelled: boolean
 ): boolean {
   const isLastToolCall = useIsLastToolCallInMessage(toolCallId);
   const turnFinished = useAuiState((s) => !s.thread.isRunning);
@@ -230,7 +237,7 @@ function useFinalAllFailedChainErrorUi(
   toolCallId: string | undefined,
   isCancelled: boolean,
   statusType: ToolStatus,
-  outputHasError: boolean,
+  outputHasError: boolean
 ): boolean {
   return useAuiState((s) => {
     if (!toolCallId || isCancelled || s.thread.isRunning) return false;
@@ -251,10 +258,11 @@ function useFinalAllFailedChainErrorUi(
     if (lastToolId !== toolCallId) return false;
 
     const toolParts = parts.filter(
-      (p) => (p as ToolCallPartState).type === "tool-call",
+      (p) => (p as ToolCallPartState).type === "tool-call"
     );
     return (
-      toolParts.length > 0 && toolParts.every((p) => partIsTerminalFailedTool(p))
+      toolParts.length > 0 &&
+      toolParts.every((p) => partIsTerminalFailedTool(p))
     );
   });
 }
@@ -275,7 +283,7 @@ function getStatusBadge(
   isCancelled: boolean,
   outputHasError: boolean,
   isFinalSuccessfulToolCall: boolean,
-  isFinalAllFailedErrorChain: boolean,
+  isFinalAllFailedErrorChain: boolean
 ): BadgeSpec {
   if (isCancelled) {
     return {
@@ -363,7 +371,7 @@ function ToolFallbackTrigger({
     isCancelled,
     outputHasError,
     Boolean(isFinalSuccessfulToolCall),
-    Boolean(isFinalAllFailedErrorChain),
+    Boolean(isFinalAllFailedErrorChain)
   );
 
   return (
@@ -374,7 +382,7 @@ function ToolFallbackTrigger({
         "hover:bg-zinc-50/80 dark:hover:bg-zinc-900/50",
         "outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset",
         "[&[data-state=open]_.tool-chevron]:-rotate-180",
-        className,
+        className
       )}
       {...props}
     >
@@ -391,7 +399,7 @@ function ToolFallbackTrigger({
         className={cn(
           "inline-flex shrink-0 items-center gap-1.5 rounded-xl px-2 py-0.5 font-sans text-[12px] font-medium",
           BADGE_BASE_CLASS,
-          isCancelled && "line-through opacity-80",
+          isCancelled && "line-through opacity-80"
         )}
       >
         <Icon className={cn("size-3.5 shrink-0", iconClass)} aria-hidden />
@@ -423,7 +431,7 @@ function ToolFallbackContent({
         "data-[state=closed]:pointer-events-none",
         "data-[state=open]:duration-(--animation-duration)",
         "data-[state=closed]:duration-(--animation-duration)",
-        className,
+        className
       )}
       {...props}
     >
@@ -467,34 +475,45 @@ function ToolFallbackResult({
   if (result === undefined) return null;
 
   const failed = toolOutputHasError(result);
-  const body =
-    typeof result === "string" ? result : JSON.stringify(result);
+  const stringResult = typeof result === "string" ? result : null;
+  const body = stringResult ?? JSON.stringify(result, null, 2);
+  const parsedStringResult = stringResult ? tryParseJson(stringResult) : null;
+  const shouldRenderMarkdown =
+    typeof stringResult === "string" && parsedStringResult === null;
 
   return (
     <div
       data-slot="tool-fallback-result"
       className={cn(
         "aui-tool-fallback-result border-zinc-200/60 border-t px-4 py-4 dark:border-zinc-800/80",
-        className,
+        className
       )}
       {...props}
     >
       <SectionLabel>
-        {failed
-          ? isFinalAllFailedErrorChain
-            ? "Error"
-            : "Failed"
-          : "Result"}
+        {failed ? (isFinalAllFailedErrorChain ? "Error" : "Failed") : "Result"}
       </SectionLabel>
-      <div
-        className="max-h-64 overflow-y-auto rounded-lg border border-zinc-200/80 bg-zinc-50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-950/80"
-      >
-        <pre className="font-mono text-[12px] leading-relaxed whitespace-pre-wrap break-all text-zinc-700 dark:text-zinc-300">
-          {body}
-        </pre>
-      </div>
+      {shouldRenderMarkdown ? (
+        <div className="max-h-96 overflow-y-auto rounded-lg border border-zinc-200/80 bg-background px-4 py-3 dark:border-zinc-800">
+          <ChatMarkdown text={stringResult} className="text-sm" />
+        </div>
+      ) : (
+        <div className="max-h-64 overflow-y-auto rounded-lg border border-zinc-200/80 bg-zinc-50 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-950/80">
+          <pre className="font-mono text-[12px] leading-relaxed whitespace-pre-wrap break-all text-zinc-700 dark:text-zinc-300">
+            {body}
+          </pre>
+        </div>
+      )}
     </div>
   );
+}
+
+function tryParseJson(raw: string): unknown | null {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
 function ToolFallbackError({
@@ -521,8 +540,8 @@ function ToolFallbackError({
   const headerText = isCancelled
     ? "Cancelled"
     : isFinalAllFailedErrorChain
-      ? "Error"
-      : "Failed";
+    ? "Error"
+    : "Failed";
 
   return (
     <div
@@ -537,8 +556,8 @@ function ToolFallbackError({
           isCancelled
             ? "border-zinc-200 bg-zinc-50 text-muted-foreground dark:border-zinc-700 dark:bg-zinc-900/50"
             : isFinalAllFailedErrorChain
-              ? ERROR_CALLOUT_CLASS
-              : FAILED_CALLOUT_CLASS,
+            ? ERROR_CALLOUT_CLASS
+            : FAILED_CALLOUT_CLASS
         )}
       >
         {errorText}
@@ -596,13 +615,13 @@ const ToolFallbackImpl: ToolCallMessagePartComponent = ({
     typeof toolCallId === "string" ? toolCallId : undefined,
     statusType,
     outputHasError,
-    isCancelled,
+    isCancelled
   );
   const isFinalAllFailedErrorChain = useFinalAllFailedChainErrorUi(
     typeof toolCallId === "string" ? toolCallId : undefined,
     isCancelled,
     statusType,
-    outputHasError,
+    outputHasError
   );
 
   const defaultOpen = statusType === "requires-action";
@@ -643,7 +662,7 @@ const ToolFallbackImpl: ToolCallMessagePartComponent = ({
 };
 
 const ToolFallback = memo(
-  ToolFallbackImpl,
+  ToolFallbackImpl
 ) as unknown as ToolCallMessagePartComponent & {
   Root: typeof ToolFallbackRoot;
   Trigger: typeof ToolFallbackTrigger;

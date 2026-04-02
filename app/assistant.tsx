@@ -19,21 +19,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const MODEL_OPTIONS = [
   {
-    id: "doubao-seed-2-0-mini-260215",
-    name: "Doubao 2.0 Mini",
-    description: "Volcengine Ark",
+    id: "claude-sonnet-4-6",
+    name: "Claude Sonnet 4.6",
+    description: "New API",
     icon: <BrainIcon />,
   },
   {
-    id: "doubao-seed-2-0-lite-260215",
-    name: "Doubao Seed 2.0 Lite",
-    description: "Volcengine Ark",
-    icon: <BrainIcon />,
-  },
-  {
-    id: "doubao-seed-1-6-lite-251015",
-    name: "Doubao Seed 1.6 Lite",
-    description: "Volcengine Ark",
+    id: "claude-opus-4-6",
+    name: "Claude Opus 4.6",
+    description: "New API",
     icon: <BrainIcon />,
   },
 ];
