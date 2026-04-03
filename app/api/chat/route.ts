@@ -35,6 +35,7 @@ const newApiBaseURL = normalizeOpenAICompatibleBaseURL(
   process.env.NEWAPI_BASE_URL ?? "http://newapi.dditapp.com",
 );
 const newApiClaudeModels = new Set(["claude-opus-4-6", "claude-sonnet-4-6"]);
+const INVALID_THREAD_IDS = new Set(["DEFAULT_THREAD_ID", "__DEFAULT_ID__"]);
 
 const analystGuidePrompt = fs.readFileSync(
   path.join(process.cwd(), "prompts/analyst-guide.md"),
@@ -59,6 +60,10 @@ const newApi = createOpenAI({
 });
 
 function sanitizeMessages(messages: UIMessage[]): UIMessage[] {
+  if (!Array.isArray(messages)) {
+    return [];
+  }
+
   return messages
     .map((message) => ({
       ...message,
@@ -103,6 +108,20 @@ function resolveChatModel(modelName: string) {
   return ark.chat(modelName);
 }
 
+function resolvePersistedThreadId(id: string | undefined) {
+  if (!id) {
+    return crypto.randomUUID().replace(/-/g, "");
+  }
+
+  const normalized = id.trim();
+
+  if (!normalized || INVALID_THREAD_IDS.has(normalized)) {
+    return crypto.randomUUID().replace(/-/g, "");
+  }
+
+  return normalized;
+}
+
 export async function POST(req: Request) {
   const user = await getCurrentUser();
 
@@ -138,10 +157,7 @@ export async function POST(req: Request) {
   }
 
   const sanitizedMessages = sanitizeMessages(messages);
-  const threadId =
-    typeof id === "string" && id.trim().length > 0
-      ? id.trim()
-      : crypto.randomUUID().replace(/-/g, "");
+  const threadId = resolvePersistedThreadId(id);
 
   const result = streamText({
     model: resolveChatModel(resolvedModelName),

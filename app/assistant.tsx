@@ -33,10 +33,18 @@ const MODEL_OPTIONS = [
   },
 ];
 
+const INVALID_THREAD_IDS = new Set(["DEFAULT_THREAD_ID", "__DEFAULT_ID__"]);
+
 function getThreadIdFromUrl(): string | undefined {
   if (typeof window === "undefined") return undefined;
   const match = window.location.pathname.match(/^\/chat\/([^/]+)/);
-  return match?.[1] || undefined;
+  const threadId = match?.[1];
+
+  if (!threadId || INVALID_THREAD_IDS.has(threadId)) {
+    return undefined;
+  }
+
+  return threadId;
 }
 
 type AssistantProps = {
@@ -48,8 +56,12 @@ export const Assistant = ({
   initialThreadId,
   currentUserLabel,
 }: AssistantProps) => {
+  const safeInitialThreadId =
+    initialThreadId && !INVALID_THREAD_IDS.has(initialThreadId)
+      ? initialThreadId
+      : undefined;
   const [activeThreadId, setActiveThreadId] = useState<string | undefined>(
-    initialThreadId,
+    safeInitialThreadId,
   );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -58,8 +70,8 @@ export const Assistant = ({
   const [threads, setThreads] = useState<StoredThreadSummary[]>([]);
   const [threadsLoaded, setThreadsLoaded] = useState(false);
   const [draftThreadId, setDraftThreadId] = useState(() => createThreadId());
-  const [hydrating, setHydrating] = useState(!!initialThreadId);
-  const hydratingRef = useRef(!!initialThreadId);
+  const [hydrating, setHydrating] = useState(!!safeInitialThreadId);
+  const hydratingRef = useRef(!!safeInitialThreadId);
   const didFinalizeDraftRef = useRef(false);
 
   const transport = useMemo(() => ({ api: "/api/chat" }), []);

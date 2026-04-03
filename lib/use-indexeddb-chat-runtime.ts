@@ -22,8 +22,35 @@ export const useIndexedDBChatRuntime = ({
   ...chatOptions
 }: IndexedDBChatRuntimeOptions) => {
   const transport = useMemo(
-    () => new AssistantChatTransport(transportOptions ?? { api: "/api/chat" }),
-    [transportOptions],
+    () =>
+      new AssistantChatTransport({
+        api: "/api/chat",
+        ...transportOptions,
+        prepareSendMessagesRequest: async (options) => {
+          const preparedRequest =
+            await transportOptions?.prepareSendMessagesRequest?.(options);
+          const preparedBody =
+            preparedRequest?.body &&
+            typeof preparedRequest.body === "object" &&
+            !Array.isArray(preparedRequest.body)
+              ? preparedRequest.body
+              : {};
+
+          return {
+            ...preparedRequest,
+            body: {
+              ...options.body,
+              ...preparedBody,
+              messages: options.messages,
+              trigger: options.trigger,
+              messageId: options.messageId,
+              metadata: options.requestMetadata,
+              id: threadId,
+            },
+          };
+        },
+      }),
+    [threadId, transportOptions],
   );
   const chat = useChat({
     ...chatOptions,
