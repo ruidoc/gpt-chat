@@ -4,6 +4,7 @@
 - 只读查询工具名：**`run_bigquery_sql`**（不要使用旧名 `query`，避免与「参数字段名」混淆）。
 - 预估/校验工具名：**`dry_run_bigquery_sql`**（不要使用旧名 `dry_run_query`）。
 - SQL 文本**必须**放在参数 **`sql`** 里；不要用 **`query`** 作为参数名（历史原因：旧工具名是 `query`，模型容易误用）。
+- **传给 `run_bigquery_sql` / `dry_run_bigquery_sql` 的 SQL 禁止包含任何注释**（不要写行注释 `-- …`，也不要写块注释 `/* … */`）。服务端会检查整段字符串是否以 `SELECT` 开头；若以注释开头会报错 `Only SELECT queries are allowed.`。查询意图、字段说明请写在**回复正文**，不要写进 `sql` 参数。
 
 # 时区问题
 
