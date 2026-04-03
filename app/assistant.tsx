@@ -5,12 +5,13 @@ import { ThreadList } from "@/components/assistant-ui/thread-list";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   createThreadId,
-  deleteStoredThread,
-  listStoredThreads,
-  loadStoredThreadMessages,
-  saveStoredThreadMessages,
   type StoredThreadSummary,
 } from "@/lib/chat-thread-store";
+import {
+  deleteRemoteThread,
+  listRemoteThreads,
+  loadRemoteThreadMessages,
+} from "@/lib/remote-chat-store";
 import { useIndexedDBChatRuntime } from "@/lib/use-indexeddb-chat-runtime";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
@@ -40,11 +41,15 @@ function getThreadIdFromUrl(): string | undefined {
 
 type AssistantProps = {
   initialThreadId?: string;
+  currentUserLabel: string;
 };
 
-export const Assistant = ({ initialThreadId }: AssistantProps) => {
+export const Assistant = ({
+  initialThreadId,
+  currentUserLabel,
+}: AssistantProps) => {
   const [activeThreadId, setActiveThreadId] = useState<string | undefined>(
-    initialThreadId
+    initialThreadId,
   );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -55,14 +60,14 @@ export const Assistant = ({ initialThreadId }: AssistantProps) => {
   const [draftThreadId, setDraftThreadId] = useState(() => createThreadId());
   const [hydrating, setHydrating] = useState(!!initialThreadId);
   const hydratingRef = useRef(!!initialThreadId);
-  const creatingThreadIdRef = useRef<string | null>(null);
+  const didFinalizeDraftRef = useRef(false);
 
   const transport = useMemo(() => ({ api: "/api/chat" }), []);
 
   useEffect(() => {
     window.localStorage.setItem(
       "gpt-chat-sidebar",
-      sidebarCollapsed ? "collapsed" : "expanded"
+      sidebarCollapsed ? "collapsed" : "expanded",
     );
   }, [sidebarCollapsed]);
 
@@ -71,6 +76,7 @@ export const Assistant = ({ initialThreadId }: AssistantProps) => {
     const onPopState = () => {
       const id = getThreadIdFromUrl();
       setActiveThreadId(id);
+      didFinalizeDraftRef.current = !!id;
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
@@ -82,10 +88,9 @@ export const Assistant = ({ initialThreadId }: AssistantProps) => {
     transport,
   });
   const { messages, setMessages, status } = chat;
-  const previousPersistedRef = useRef<string>("");
 
   const refreshThreads = useCallback(async () => {
-    const nextThreads = await listStoredThreads();
+    const nextThreads = await listRemoteThreads();
     setThreads(nextThreads);
     setThreadsLoaded(true);
   }, []);
@@ -100,87 +105,109 @@ export const Assistant = ({ initialThreadId }: AssistantProps) => {
   // Load messages when activeThreadId changes
   useEffect(() => {
     hydratingRef.current = true;
-    previousPersistedRef.current = "";
 
     if (!activeThreadId) {
       setMessages([]);
       hydratingRef.current = false;
-      setHydrating(false);
-      return;
+      const clearHydratingTimer = window.setTimeout(() => {
+        setHydrating(false);
+      }, 0);
+
+      return () => window.clearTimeout(clearHydratingTimer);
     }
 
-    setHydrating(true);
-    void loadStoredThreadMessages(activeThreadId)
+    const startHydratingTimer = window.setTimeout(() => {
+      setHydrating(true);
+    }, 0);
+    let finishHydratingTimer: number | undefined;
+    let cancelled = false;
+
+    void loadRemoteThreadMessages(activeThreadId)
       .then((msgs) => {
-        setMessages(msgs);
+        if (!cancelled) {
+          setMessages(msgs);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMessages([]);
+        }
       })
       .finally(() => {
         hydratingRef.current = false;
-        setHydrating(false);
+        finishHydratingTimer = window.setTimeout(() => {
+          if (!cancelled) {
+            setHydrating(false);
+          }
+        }, 0);
       });
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(startHydratingTimer);
+      if (finishHydratingTimer) {
+        window.clearTimeout(finishHydratingTimer);
+      }
+    };
   }, [setMessages, activeThreadId]);
 
-  // Save messages to IndexedDB, create thread ID on first reply
   useEffect(() => {
-    if (hydratingRef.current) return;
+    if (hydratingRef.current || status !== "ready") {
+      return;
+    }
 
-    const timeout = window.setTimeout(() => {
-      const hasAssistantReply = messages.some(
-        (message) =>
-          message.role === "assistant" &&
-          message.parts.some(
-            (part) =>
-              (part.type === "text" && (part.text?.trim().length ?? 0) > 0) ||
-              part.type === "reasoning" ||
-              part.type === "tool-call"
-          )
-      );
+    const hasAssistantReply = messages.some(
+      (message) =>
+        message.role === "assistant" &&
+        message.parts.some(
+          (part) =>
+            (part.type === "text" && (part.text?.trim().length ?? 0) > 0) ||
+            part.type === "reasoning" ||
+            part.type === "tool-call",
+        ),
+    );
 
-      const resolvedThreadId = activeThreadId ?? creatingThreadIdRef.current;
+    if (!hasAssistantReply) {
+      return;
+    }
 
-      if (!resolvedThreadId && (!hasAssistantReply || status !== "ready")) {
-        return;
+    const refreshTimer = window.setTimeout(() => {
+      void refreshThreads();
+    }, 0);
+    let activateDraftTimer: number | undefined;
+
+    if (!activeThreadId && !didFinalizeDraftRef.current) {
+      didFinalizeDraftRef.current = true;
+      activateDraftTimer = window.setTimeout(() => {
+        setActiveThreadId(draftThreadId);
+        window.history.replaceState(null, "", `/chat/${draftThreadId}`);
+      }, 0);
+    }
+
+    return () => {
+      window.clearTimeout(refreshTimer);
+      if (activateDraftTimer) {
+        window.clearTimeout(activateDraftTimer);
       }
+    };
+  }, [activeThreadId, draftThreadId, messages, refreshThreads, status]);
 
-      const nextThreadId = resolvedThreadId ?? createThreadId();
-      const serialized = JSON.stringify(messages);
-
-      if (serialized === previousPersistedRef.current) return;
-      previousPersistedRef.current = serialized;
-
-      if (!activeThreadId && !creatingThreadIdRef.current) {
-        creatingThreadIdRef.current = nextThreadId;
-      }
-
-      void saveStoredThreadMessages(nextThreadId, messages).then(async () => {
-        await refreshThreads();
-
-        if (!activeThreadId) {
-          window.history.replaceState(null, "", `/chat/${nextThreadId}`);
-        }
-      });
-    }, 200);
-
-    return () => window.clearTimeout(timeout);
-  }, [messages, refreshThreads, status, activeThreadId]);
-
-  const effectiveThreadId = activeThreadId ?? creatingThreadIdRef.current;
+  const effectiveThreadId = activeThreadId ?? draftThreadId;
 
   const handleSelectThread = useCallback(
     (nextThreadId: string) => {
       if (nextThreadId === effectiveThreadId) return;
-      creatingThreadIdRef.current = null;
-      previousPersistedRef.current = "";
+      didFinalizeDraftRef.current = true;
       setActiveThreadId(nextThreadId);
       window.history.pushState(null, "", `/chat/${nextThreadId}`);
     },
-    [effectiveThreadId]
+    [effectiveThreadId],
   );
 
   const handleNewThread = useCallback(() => {
-    creatingThreadIdRef.current = null;
-    setDraftThreadId(createThreadId());
-    previousPersistedRef.current = "";
+    const nextDraftThreadId = createThreadId();
+    didFinalizeDraftRef.current = false;
+    setDraftThreadId(nextDraftThreadId);
     setActiveThreadId(undefined);
     setMessages([]);
     window.history.pushState(null, "", "/chat");
@@ -188,32 +215,41 @@ export const Assistant = ({ initialThreadId }: AssistantProps) => {
 
   const handleDeleteThread = useCallback(
     async (targetThreadId: string) => {
-      await deleteStoredThread(targetThreadId);
+      await deleteRemoteThread(targetThreadId);
       await refreshThreads();
 
       if (targetThreadId === effectiveThreadId) {
-        creatingThreadIdRef.current = null;
+        didFinalizeDraftRef.current = false;
         setDraftThreadId(createThreadId());
-        previousPersistedRef.current = "";
         setActiveThreadId(undefined);
         setMessages([]);
         window.history.replaceState(null, "", "/chat");
       }
     },
-    [effectiveThreadId, refreshThreads, setMessages]
+    [effectiveThreadId, refreshThreads, setMessages],
   );
+
+  const handleLogout = useCallback(async () => {
+    await fetch("/api/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+    window.location.href = "/login";
+  }, []);
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <TooltipProvider>
         <AssistantSidebar
+          currentUserLabel={currentUserLabel}
           modelOptions={MODEL_OPTIONS}
           sidebarCollapsed={sidebarCollapsed}
           hydrating={hydrating}
+          onLogout={handleLogout}
           onToggleSidebar={() => setSidebarCollapsed((value) => !value)}
         >
           <ThreadList
-            activeThreadId={effectiveThreadId ?? ""}
+            activeThreadId={effectiveThreadId}
             isLoading={!threadsLoaded}
             threads={threads}
             onDeleteThread={handleDeleteThread}

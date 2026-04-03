@@ -3,6 +3,7 @@ import {
   type ModelOption,
 } from "@/components/assistant-ui/model-selector";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
+import { Button } from "@/components/ui/button";
 import { Thread } from "@/components/assistant-ui/thread";
 import { cn } from "@/lib/utils";
 import { ChartNoAxesCombinedIcon, PanelLeftIcon, ShareIcon } from "lucide-react";
@@ -13,14 +14,18 @@ type AssistantSidebarProps = PropsWithChildren<{
   sidebarCollapsed: boolean;
   hydrating?: boolean;
   onToggleSidebar: () => void;
+  onLogout: () => void;
   modelOptions: ModelOption[];
+  currentUserLabel: string;
 }>;
 
 export const AssistantSidebar: FC<AssistantSidebarProps> = ({
   children,
+  currentUserLabel,
   sidebarCollapsed,
   hydrating,
   onToggleSidebar,
+  onLogout,
   modelOptions,
 }) => {
   return (
@@ -41,6 +46,18 @@ export const AssistantSidebar: FC<AssistantSidebarProps> = ({
             </Link>
           </div>
           <div className="flex-1 overflow-y-auto px-3 py-2">{children}</div>
+          <div className="border-t px-3 py-3">
+            <div className="mb-2 truncate px-1 text-sm text-muted-foreground">
+              {currentUserLabel}
+            </div>
+            <Button
+              variant="outline"
+              className="w-full justify-center"
+              onClick={onLogout}
+            >
+              退出登录
+            </Button>
+          </div>
         </aside>
 
         <section className="flex min-w-0 flex-1 flex-col">

@@ -6,6 +6,8 @@ import {
   streamText,
   type UIMessage,
 } from "ai";
+import { getCurrentUser } from "@/lib/auth";
+import { replaceThreadMessages } from "@/lib/chat-db";
 import { bigqueryTools } from "@/lib/bigquery-tools";
 import { buildRuntimeContext } from "@/lib/runtime-context";
 import fs from "fs";
@@ -102,12 +104,20 @@ function resolveChatModel(modelName: string) {
 }
 
 export async function POST(req: Request) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const {
+    id,
     messages,
     system,
     tools,
     config,
   }: {
+    id?: string;
     messages: UIMessage[];
     system?: string;
     tools?: Record<string, { description?: string; parameters: JSONSchema7 }>;
@@ -127,9 +137,15 @@ export async function POST(req: Request) {
     );
   }
 
+  const sanitizedMessages = sanitizeMessages(messages);
+  const threadId =
+    typeof id === "string" && id.trim().length > 0
+      ? id.trim()
+      : crypto.randomUUID().replace(/-/g, "");
+
   const result = streamText({
     model: resolveChatModel(resolvedModelName),
-    messages: await convertToModelMessages(sanitizeMessages(messages)),
+    messages: await convertToModelMessages(sanitizedMessages),
     tools: {
       ...frontendTools(tools ?? {}),
       ...bigqueryTools,
@@ -139,5 +155,15 @@ export async function POST(req: Request) {
       .join("\n\n"),
   });
 
-  return result.toUIMessageStreamResponse();
+  return result.toUIMessageStreamResponse({
+    originalMessages: sanitizedMessages,
+    onFinish: async ({ messages: completedMessages }) => {
+      await replaceThreadMessages({
+        userId: user.id,
+        threadId,
+        messages: sanitizeMessages(completedMessages),
+        modelName: resolvedModelName,
+      });
+    },
+  });
 }
