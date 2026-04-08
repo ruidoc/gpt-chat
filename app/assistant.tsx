@@ -49,12 +49,15 @@ function getThreadIdFromUrl(): string | undefined {
 
 type AssistantProps = {
   initialThreadId?: string;
-  currentUserLabel: string;
+  currentUser: {
+    email: string;
+    name: string | null;
+  };
 };
 
 export const Assistant = ({
   initialThreadId,
-  currentUserLabel,
+  currentUser,
 }: AssistantProps) => {
   const safeInitialThreadId =
     initialThreadId && !INVALID_THREAD_IDS.has(initialThreadId)
@@ -253,7 +256,7 @@ export const Assistant = ({
     <AssistantRuntimeProvider runtime={runtime}>
       <TooltipProvider>
         <AssistantSidebar
-          currentUserLabel={currentUserLabel}
+          currentUser={currentUser}
           modelOptions={MODEL_OPTIONS}
           sidebarCollapsed={sidebarCollapsed}
           hydrating={hydrating}

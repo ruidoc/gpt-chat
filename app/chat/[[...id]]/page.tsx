@@ -26,7 +26,10 @@ export default async function ChatPage({
   return (
     <Assistant
       initialThreadId={threadId}
-      currentUserLabel={user.name || user.email}
+      currentUser={{
+        email: user.email,
+        name: user.name,
+      }}
     />
   );
 }

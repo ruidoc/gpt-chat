@@ -34,9 +34,9 @@ export function LoginForm() {
         }),
       });
 
-      const payload = (await response.json().catch(() => null)) as
-        | { error?: string }
-        | null;
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
 
       if (!response.ok) {
         setError(payload?.error ?? "登录失败，请稍后再试。");
@@ -60,7 +60,7 @@ export function LoginForm() {
           登录 DataTalk
         </h1>
         <p className="text-sm text-muted-foreground">
-          只开放已有账号登录，账号由后台手动维护。
+          只开放已有账号登录，请联系负责人获取账号。
         </p>
       </div>
 
