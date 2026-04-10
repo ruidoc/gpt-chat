@@ -1,6 +1,6 @@
 "use client";
 
-import "@assistant-ui/react-markdown/styles/dot.css";
+// import "@assistant-ui/react-markdown/styles/dot.css";
 import "streamdown/styles.css";
 
 import { INTERNAL, useMessagePartText } from "@assistant-ui/react";
@@ -25,7 +25,7 @@ const { useSmooth, useSmoothStatus, withSmoothContextProvider } = INTERNAL;
 
 function mergeHeadingStyle(
   level: keyof MarkdownHeadingFontSizes,
-  style?: CSSProperties,
+  style?: CSSProperties
 ): CSSProperties | undefined {
   const fs = MARKDOWN_HEADING_FONT_SIZES[level];
   if (!fs && !style) return undefined;
@@ -42,7 +42,7 @@ const SimpleTable: NonNullable<Components["table"]> = ({
   return (
     <div
       className={cn(
-        "aui-md-table-scroll my-4 min-w-0 max-w-full overflow-x-auto overflow-y-auto rounded-md border border-border bg-background",
+        "aui-md-table-scroll my-4 min-w-0 max-w-full overflow-x-auto overflow-y-auto rounded-md border border-border bg-background"
       )}
     >
       <table
@@ -71,7 +71,7 @@ const baseChatComponents: Partial<Components> = {
     <blockquote
       className={cn(
         "my-2.5 border-muted-foreground/30 border-l-2 pl-3 text-muted-foreground italic",
-        className,
+        className
       )}
       {...props}
     />
@@ -80,7 +80,7 @@ const baseChatComponents: Partial<Components> = {
     <ul
       className={cn(
         "my-2 ml-5.5 list-disc whitespace-normal marker:text-[#818cf8] [&>li]:mt-1",
-        className,
+        className
       )}
       {...props}
     />
@@ -89,7 +89,7 @@ const baseChatComponents: Partial<Components> = {
     <ol
       className={cn(
         "my-2 ml-6 list-decimal whitespace-normal marker:text-[#818cf8] [&>li]:mt-1",
-        className,
+        className
       )}
       {...props}
     />
@@ -113,7 +113,7 @@ const baseChatComponents: Partial<Components> = {
     <code
       className={cn(
         "rounded-md bg-muted/50 px-1.5 py-0.5 font-mono text-[0.85em]",
-        className,
+        className
       )}
       {...props}
     />
@@ -126,7 +126,7 @@ const baseChatComponents: Partial<Components> = {
       className={cn(
         "mt-3 mb-1.5 scroll-m-20 font-semibold first:mt-0",
         MARKDOWN_HEADING_FONT_SIZES.h1 ? undefined : "text-base",
-        className,
+        className
       )}
       style={mergeHeadingStyle("h1", style)}
       {...props}
@@ -137,7 +137,7 @@ const baseChatComponents: Partial<Components> = {
       className={cn(
         "mt-3 mb-1 scroll-m-20 font-semibold first:mt-0",
         MARKDOWN_HEADING_FONT_SIZES.h2 ? undefined : "text-sm",
-        className,
+        className
       )}
       style={mergeHeadingStyle("h2", style)}
       {...props}
@@ -148,7 +148,7 @@ const baseChatComponents: Partial<Components> = {
       className={cn(
         "mt-2.5 mb-1 scroll-m-20 font-semibold first:mt-0",
         MARKDOWN_HEADING_FONT_SIZES.h3 ? undefined : "text-sm",
-        className,
+        className
       )}
       style={mergeHeadingStyle("h3", style)}
       {...props}
@@ -159,7 +159,7 @@ const baseChatComponents: Partial<Components> = {
       className={cn(
         "mt-2 mb-1 scroll-m-20 font-medium first:mt-0",
         MARKDOWN_HEADING_FONT_SIZES.h4 ? undefined : "text-sm",
-        className,
+        className
       )}
       style={mergeHeadingStyle("h4", style)}
       {...props}
@@ -170,7 +170,7 @@ const baseChatComponents: Partial<Components> = {
       className={cn(
         "mt-2 mb-1 font-medium first:mt-0",
         MARKDOWN_HEADING_FONT_SIZES.h5 ? undefined : "text-sm",
-        className,
+        className
       )}
       style={mergeHeadingStyle("h5", style)}
       {...props}
@@ -181,7 +181,7 @@ const baseChatComponents: Partial<Components> = {
       className={cn(
         "mt-2 mb-1 font-medium first:mt-0",
         MARKDOWN_HEADING_FONT_SIZES.h6 ? undefined : "text-sm",
-        className,
+        className
       )}
       style={mergeHeadingStyle("h6", style)}
       {...props}
@@ -197,7 +197,7 @@ const baseChatComponents: Partial<Components> = {
       className={cn(
         "whitespace-nowrap px-4 text-left font-semibold text-sm",
         className,
-        "py-3",
+        "py-3"
       )}
       {...props}
     />
@@ -264,7 +264,7 @@ const MarkdownTextOuter = forwardRef<HTMLDivElement, Record<string, never>>(
         <MarkdownTextInner />
       </div>
     );
-  },
+  }
 );
 
 MarkdownTextOuter.displayName = "MarkdownText";
